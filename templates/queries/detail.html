@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Query #{{ query.id }} - WebBuddy{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="{% url 'query_list' %}" class="btn btn-secondary">← Back to History</a>
+</div>
+
+<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+    <h2 style="color: #667eea; margin-bottom: 15px;">Query #{{ query.id }}</h2>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+        <div>
+            <strong>Status:</strong>
+            <span id="query-status" style="padding: 4px 12px; border-radius: 4px; background: {% if query.status == 'done' %}#d4edda{% elif query.status == 'failed' %}#f8d7da{% elif query.status == 'in_progress' %}#fff3cd{% else %}#d1ecf1{% endif %}; color: {% if query.status == 'done' %}#155724{% elif query.status == 'failed' %}#721c24{% elif query.status == 'in_progress' %}#856404{% else %}#0c5460{% endif %};">
+                {{ query.status|upper }}
+            </span>
+        </div>
+        <div>
+            <strong>Created:</strong> {{ query.query_created|date:"Y-m-d H:i:s" }}
+        </div>
+        <div>
+            <strong>User:</strong> {{ query.user.fio_name }}
+        </div>
+        <div id="finished-container" {% if not query.query_finished %}style="display: none;"{% endif %}>
+            <strong>Finished:</strong> <span id="query-finished">{{ query.query_finished|date:"Y-m-d H:i:s" }}</span>
+        </div>
+    </div>
+
+    <div>
+        <strong>Query Text:</strong>
+        <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 5px; white-space: pre-wrap;">{{ query.query_text }}</div>
+    </div>
+</div>
+
+<div id="answer-container" {% if not query.answer_text %}style="display: none;"{% endif %} style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+    <h3 style="color: #2e7d32; margin-bottom: 10px;">Answer</h3>
+    <div id="answer-text" style="white-space: pre-wrap;">{{ query.answer_text }}</div>
+</div>
+
+<div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="color: #667eea;">Execution Logs</h3>
+        <button id="refresh-btn" class="btn">Refresh</button>
+    </div>
+
+    <div id="logs-container" style="background: #f8f9fa; padding: 20px; border-radius: 8px; max-height: 600px; overflow-y: auto;">
+        {% if query.logs.all %}
+            {% for log in query.logs.all %}
+            <div class="log-entry" style="border-left: 3px solid #667eea; padding: 10px; margin-bottom: 10px; background: white; border-radius: 4px;">
+                <small style="color: #666;">{{ log.create_dtime|date:"Y-m-d H:i:s" }}</small>
+                <div style="margin-top: 5px;">{{ log.log_data }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: #666; text-align: center;">No logs yet. Waiting for processing...</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh logs every 3 seconds if query is not finished
+    let refreshInterval;
+
+    function updateQueryData() {
+        fetch('{% url "query_logs_ajax" pk=query.id %}')
+            .then(response => response.json())
+            .then(data => {
+                // Update status
+                const statusElement = document.getElementById('query-status');
+                statusElement.textContent = data.status.toUpperCase();
+
+                // Update status color
+                let bgColor, textColor;
+                switch(data.status) {
+                    case 'done':
+                        bgColor = '#d4edda';
+                        textColor = '#155724';
+                        break;
+                    case 'failed':
+                        bgColor = '#f8d7da';
+                        textColor = '#721c24';
+                        break;
+                    case 'in_progress':
+                        bgColor = '#fff3cd';
+                        textColor = '#856404';
+                        break;
+                    default:
+                        bgColor = '#d1ecf1';
+                        textColor = '#0c5460';
+                }
+                statusElement.style.background = bgColor;
+                statusElement.style.color = textColor;
+
+                // Update answer if available
+                if (data.answer_text) {
+                    document.getElementById('answer-text').textContent = data.answer_text;
+                    document.getElementById('answer-container').style.display = 'block';
+                }
+
+                // Update finished time if available
+                if (data.query_finished) {
+                    document.getElementById('query-finished').textContent = new Date(data.query_finished).toLocaleString();
+                    document.getElementById('finished-container').style.display = 'block';
+                }
+
+                // Update logs
+                const logsContainer = document.getElementById('logs-container');
+                if (data.logs.length > 0) {
+                    logsContainer.innerHTML = data.logs.map(log => `
+                        <div class="log-entry" style="border-left: 3px solid #667eea; padding: 10px; margin-bottom: 10px; background: white; border-radius: 4px;">
+                            <small style="color: #666;">${new Date(log.create_dtime).toLocaleString()}</small>
+                            <div style="margin-top: 5px;">${log.log_data}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    logsContainer.innerHTML = '<p style="color: #666; text-align: center;">No logs yet. Waiting for processing...</p>';
+                }
+
+                // Stop auto-refresh if query is finished
+                if (data.status === 'done' || data.status === 'failed') {
+                    clearInterval(refreshInterval);
+                }
+            })
+            .catch(error => console.error('Error fetching query data:', error));
+    }
+
+    // Manual refresh button
+    document.getElementById('refresh-btn').addEventListener('click', updateQueryData);
+
+    // Auto-refresh every 3 seconds
+    const currentStatus = '{{ query.status }}';
+    if (currentStatus !== 'done' && currentStatus !== 'failed') {
+        refreshInterval = setInterval(updateQueryData, 3000);
+    }
+</script>
+{% endblock %}
