@@ -130,32 +130,219 @@ webbuddy/
 4. Просматривайте статус и логи: http://127.0.0.1:8000/queries/{id}/
 5. История запросов: http://127.0.0.1:8000/queries/
 
-### API Endpoints
+### Работа с API
 
-#### Аутентификация
+#### Алгоритм работы с API
+
+**Шаг 1: Создание пользователя**
+
+Администратор создаёт пользователя через админ-панель: http://127.0.0.1:8000/admin/users/user/add/
+
+- Укажите username, email, fio_name и выберите проект
+- Пароль можно не указывать - система сгенерирует временный автоматически
+
+**Шаг 2: Получение JWT токенов**
 
 ```bash
-# Получение JWT токенов
-POST /api/login/
-{
-  "username": "user",
-  "password": "password"
-}
+curl -X POST http://localhost:8000/api/login/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "ваш_username",
+    "password": "ваш_пароль"
+  }'
+```
 
-# Обновление токена
-POST /api/token/refresh/
+**Ответ:**
+```json
 {
-  "refresh": "your-refresh-token"
-}
-
-# Смена пароля
-POST /api/users/change_password/
-{
-  "old_password": "old",
-  "new_password": "new",
-  "confirm_password": "new"
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "user": {
+    "id": 1,
+    "username": "user",
+    "email": "user@example.com",
+    "project": 1,
+    "first_login": true
+  },
+  "first_login": true
 }
 ```
+
+**Время жизни токенов:**
+- `access` токен - **24 часа**
+- `refresh` токен - **7 дней**
+
+**Шаг 3: Использование Access токена в запросах**
+
+Все API запросы требуют заголовок авторизации:
+
+```bash
+curl -X GET http://localhost:8000/api/queries/ \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+```
+
+**Формат заголовка:**
+```
+Authorization: Bearer {ваш_access_token}
+```
+
+**Шаг 4: Обновление токена**
+
+Когда access токен истечёт (через 24 часа), используйте refresh токен:
+
+```bash
+curl -X POST http://localhost:8000/api/token/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh": "ваш_refresh_token"
+  }'
+```
+
+**Ответ:**
+```json
+{
+  "access": "новый_access_token"
+}
+```
+
+**Шаг 5: Смена пароля (при первом входе)**
+
+Если в ответе `/api/login/` пришло `"first_login": true`, необходимо сменить пароль:
+
+```bash
+curl -X POST http://localhost:8000/api/users/change_password/ \
+  -H "Authorization: Bearer {access_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "old_password": "временный_пароль",
+    "new_password": "новый_безопасный_пароль",
+    "confirm_password": "новый_безопасный_пароль"
+  }'
+```
+
+#### Пример класса для автоматического управления токенами (Python)
+
+```python
+import requests
+from datetime import datetime, timedelta
+
+class WebBuddyAPIClient:
+    def __init__(self, base_url="http://localhost:8000"):
+        self.base_url = base_url
+        self.access_token = None
+        self.refresh_token = None
+        self.token_expires_at = None
+
+    def login(self, username, password):
+        """Вход и получение токенов"""
+        response = requests.post(
+            f"{self.base_url}/api/login/",
+            json={"username": username, "password": password}
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        self.access_token = data["access"]
+        self.refresh_token = data["refresh"]
+        self.token_expires_at = datetime.now() + timedelta(hours=24)
+
+        print(f"Успешный вход. First login: {data['first_login']}")
+        return data
+
+    def refresh_access_token(self):
+        """Обновление access токена"""
+        response = requests.post(
+            f"{self.base_url}/api/token/refresh/",
+            json={"refresh": self.refresh_token}
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        self.access_token = data["access"]
+        self.token_expires_at = datetime.now() + timedelta(hours=24)
+
+        print("Токен успешно обновлён")
+        return data
+
+    def get_headers(self):
+        """Получить заголовки с автоматическим обновлением токена"""
+        # Обновляем токен за 5 минут до истечения
+        if self.token_expires_at and datetime.now() >= self.token_expires_at - timedelta(minutes=5):
+            self.refresh_access_token()
+
+        return {"Authorization": f"Bearer {self.access_token}"}
+
+    def get_queries(self, status=None):
+        """Получить список запросов"""
+        url = f"{self.base_url}/api/queries/"
+        if status:
+            url = f"{self.base_url}/api/queries/by_status/?status={status}"
+
+        response = requests.get(url, headers=self.get_headers())
+        response.raise_for_status()
+        return response.json()
+
+    def create_query(self, project_id, query_text):
+        """Создать новый запрос"""
+        response = requests.post(
+            f"{self.base_url}/api/queries/",
+            json={"project": project_id, "query_text": query_text},
+            headers=self.get_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def update_query(self, query_id, **fields):
+        """Обновить запрос"""
+        response = requests.patch(
+            f"{self.base_url}/api/queries/{query_id}/",
+            json=fields,
+            headers=self.get_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def create_log(self, project_id, query_id, log_data):
+        """Создать лог"""
+        response = requests.post(
+            f"{self.base_url}/api/logs/",
+            json={
+                "project": project_id,
+                "query": query_id,
+                "log_data": log_data
+            },
+            headers=self.get_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
+# Использование
+client = WebBuddyAPIClient()
+client.login("username", "password")
+
+# Создать запрос
+query = client.create_query(project_id=1, query_text="Протестировать функцию авторизации")
+
+# Обновить статус
+client.update_query(query["id"], status="in_progress")
+
+# Добавить лог
+client.create_log(project_id=1, query_id=query["id"], log_data="Начинаем обработку...")
+
+# Получить все запросы в очереди
+queued = client.get_queries(status="queued")
+```
+
+#### API Endpoints
+
+**Аутентификация**
+
+| Endpoint | Метод | Авторизация | Описание |
+|----------|-------|-------------|----------|
+| `/api/login/` | POST | Нет | Получение JWT токенов |
+| `/api/token/refresh/` | POST | Нет | Обновление access токена |
+| `/api/users/me/` | GET | Да | Информация о текущем пользователе |
+| `/api/users/change_password/` | POST | Да | Смена пароля |
 
 #### Запросы (Queries)
 
