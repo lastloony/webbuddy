@@ -139,6 +139,15 @@ LOCALE_PATHS = [
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Additional locations for static files
+STATICFILES_DIRS = [
+    BASE_DIR / 'frontend' / 'dist',  # React build output
+] if (BASE_DIR / 'frontend' / 'dist').exists() else []
+
+# Template directories
+TEMPLATES[0]['DIRS'] = [BASE_DIR / 'frontend' / 'dist']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

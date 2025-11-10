@@ -15,9 +15,10 @@ WebBuddy - это портал для автоматизированного т�
 ## Технологический стек
 
 - **Backend**: Django 5.2, Django REST Framework
+- **Frontend**: React 18 + TypeScript + Vite
 - **Database**: PostgreSQL (SQLite для разработки)
-- **Authentication**: Django Auth + JWT (SimpleJWT)
-- **Frontend**: Django Templates, Vanilla JavaScript
+- **Authentication**: JWT (SimpleJWT) с автообновлением токенов
+- **API**: REST API с полной документацией
 
 ## Установка и запуск
 
@@ -74,13 +75,40 @@ python manage.py createsuperuser
 
 Следуйте инструкциям для создания администратора.
 
-### 7. Запуск сервера разработки
+### 7. Установка Frontend зависимостей
 
 ```bash
-python manage.py runserver
+cd frontend
+npm install
+cd ..
 ```
 
-Приложение будет доступно по адресу: http://127.0.0.1:8000/
+### 8. Запуск в Development режиме
+
+**Вариант А: Два отдельных сервера (рекомендуется для разработки)**
+
+Терминал 1 - Backend:
+```bash
+python manage.py runserver
+# Django API: http://localhost:8000
+```
+
+Терминал 2 - Frontend:
+```bash
+cd frontend
+npm run dev
+# React app: http://localhost:5173
+```
+
+**Вариант Б: Django serving React build**
+
+```bash
+cd frontend
+npm run build
+cd ..
+python manage.py runserver
+# Full app: http://localhost:8000
+```
 
 ## Структура проекта
 
@@ -90,11 +118,12 @@ webbuddy/
 ├── webbuddy/              # Главные настройки проекта
 │   ├── settings.py
 │   ├── urls.py
+│   ├── views.py          # React app view
 │   └── wsgi.py
 ├── users/                 # Приложение пользователей
 │   ├── models.py         # Кастомная модель User
 │   ├── admin.py          # Админка с функцией сброса пароля
-│   ├── views.py          # Вход, смена пароля
+│   ├── views.py          # API views
 │   └── serializers.py
 ├── projects/              # Приложение проектов
 │   ├── models.py         # Модель Project
@@ -102,14 +131,18 @@ webbuddy/
 │   └── serializers.py
 ├── queries/               # Приложение запросов и логов
 │   ├── models.py         # Query, QueryLog, TokenUsageLog
-│   ├── views.py          # Web views и API viewsets
+│   ├── views.py          # API viewsets
 │   ├── serializers.py
-│   ├── urls.py           # API URLs
-│   └── urls_web.py       # Web URLs
-└── templates/             # HTML шаблоны
-    ├── base.html
-    ├── users/
-    └── queries/
+│   └── urls.py           # API URLs
+└── frontend/              # React приложение
+    ├── src/
+    │   ├── components/   # UI компоненты
+    │   ├── pages/        # Страницы
+    │   ├── services/     # API клиент
+    │   ├── contexts/     # Auth context
+    │   └── App.tsx       # Главный компонент
+    ├── package.json
+    └── vite.config.ts
 ```
 
 ## Использование
