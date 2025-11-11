@@ -186,6 +186,10 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if not DEBUG else []
 
+# FastAPI Worker Service Settings
+FASTAPI_URL = os.getenv('FASTAPI_URL', 'http://localhost:8001')
+WEBBUDDY_URL = os.getenv('WEBBUDDY_URL', 'http://localhost:8000')
+
 # Import local settings if available (for development)
 # This should be at the end to allow overriding settings
 try:

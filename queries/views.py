@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -165,6 +167,33 @@ class QueryViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def claim_next(self, request):
+        """
+        Atomically claim the next queued query for processing
+        Returns the claimed query or 404 if queue is empty
+        """
+        with transaction.atomic():
+            # Get the first queued query with row-level lock
+            query = self.get_queryset().select_for_update(skip_locked=True).filter(
+                status='queued'
+            ).order_by('query_created').first()
+
+            if not query:
+                return Response(
+                    {'detail': 'No queued queries available'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Update status to in_progress
+            query.status = 'in_progress'
+            query.query_started = timezone.now()
+            query.save()
+
+            # Return full query data
+            serializer = QuerySerializer(query)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class QueryLogViewSet(viewsets.ModelViewSet):

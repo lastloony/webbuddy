@@ -229,6 +229,12 @@ Authorization: Bearer {token}
 # Фильтр по статусу
 GET /api/queries/by_status/?status=queued
 Authorization: Bearer {token}
+
+# Атомарно взять следующий запрос из очереди (для воркеров)
+POST /api/queries/claim_next/
+Authorization: Bearer {token}
+# Возвращает запрос и автоматически меняет его статус на "in_progress"
+# Если очередь пуста, возвращает 404
 ```
 
 **Логи**
@@ -343,6 +349,23 @@ class WebBuddyAPIClient:
         response.raise_for_status()
         return response.json()
 
+    def claim_next_query(self):
+        """
+        Атомарно взять следующий запрос из очереди
+        Возвращает запрос или None если очередь пуста
+        """
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/queries/claim_next/",
+                headers=self.get_headers()
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return None  # Очередь пуста
+            raise
+
     def create_log(self, project_id, query_id, log_data):
         """Создать лог"""
         response = requests.post(
@@ -357,21 +380,41 @@ class WebBuddyAPIClient:
         response.raise_for_status()
         return response.json()
 
-# Использование
+# Использование для воркеров (рекомендуется)
 client = WebBuddyAPIClient()
-client.login("username", "password")
+client.login("worker_username", "password")
 
-# Создать запрос
-query = client.create_query(project_id=1, query_text="Протестировать функцию авторизации")
+while True:
+    # Атомарно взять следующий запрос из очереди
+    query = client.claim_next_query()
 
-# Обновить статус
-client.update_query(query["id"], status="in_progress")
+    if query:
+        try:
+            # Обрабатываем запрос
+            client.create_log(query["project"], query["id"], "Начинаем обработку...")
 
-# Добавить лог
-client.create_log(project_id=1, query_id=query["id"], log_data="Начинаем обработку...")
+            # Ваша логика обработки
+            result = process_query(query["query_text"])
 
-# Получить все запросы в очереди
-queued = client.get_queries(status="queued")
+            # Завершаем успешно
+            client.update_query(
+                query["id"],
+                status="done",
+                answer_text=result,
+                query_finished=datetime.now().isoformat()
+            )
+        except Exception as e:
+            # При ошибке
+            client.create_log(query["project"], query["id"], f"Ошибка: {str(e)}")
+            client.update_query(
+                query["id"],
+                status="failed",
+                answer_text=f"Ошибка: {str(e)}",
+                query_finished=datetime.now().isoformat()
+            )
+    else:
+        # Очередь пуста, ждем
+        time.sleep(5)
 ```
 
 ## Настройка для production
