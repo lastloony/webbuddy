@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/layout/Layout';
 import { queriesApi } from '../../services/api';
-import { Query } from '../../types';
+import type { Query } from '../../types';
 import './QueryPages.css';
 
 export function QueryHistoryPage() {

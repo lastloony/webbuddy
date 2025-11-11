@@ -87,7 +87,7 @@ export const authApi = {
 export const queriesApi = {
   getAll: async () => {
     const response = await api.get('/queries/');
-    return response.data;
+    return response.data.results || response.data; // Support paginated response
   },
 
   getById: async (id: number) => {
@@ -110,7 +110,7 @@ export const queriesApi = {
 
   getLogs: async (id: number) => {
     const response = await api.get(`/queries/${id}/logs/`);
-    return response.data;
+    return response.data.results || response.data; // Support paginated response
   },
 
   getByStatus: async (status: string) => {

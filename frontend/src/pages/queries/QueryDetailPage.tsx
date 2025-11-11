@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/layout/Layout';
 import { queriesApi } from '../../services/api';
-import { Query, QueryLog } from '../../types';
+import type { Query, QueryLog } from '../../types';
 import './QueryPages.css';
 
 export function QueryDetailPage() {
@@ -32,8 +32,15 @@ export function QueryDetailPage() {
   }, [id, query?.status]);
 
   const loadQuery = async () => {
+    if (!id) return;
     try {
-      const data = await queriesApi.getById(Number(id));
+      const queryId = parseInt(id, 10);
+      if (isNaN(queryId)) {
+        setError('Неверный ID запроса');
+        setIsLoading(false);
+        return;
+      }
+      const data = await queriesApi.getById(queryId);
       setQuery(data);
     } catch (err: any) {
       setError('Ошибка при загрузке запроса');
@@ -43,8 +50,11 @@ export function QueryDetailPage() {
   };
 
   const loadLogs = async () => {
+    if (!id) return;
     try {
-      const data = await queriesApi.getLogs(Number(id));
+      const queryId = parseInt(id, 10);
+      if (isNaN(queryId)) return;
+      const data = await queriesApi.getLogs(queryId);
       setLogs(data);
     } catch (err: any) {
       console.error('Error loading logs:', err);

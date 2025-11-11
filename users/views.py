@@ -3,8 +3,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -132,8 +133,9 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @api_view(['POST'])
+@authentication_classes([])  # Disable authentication for this view
 @permission_classes([AllowAny])
-def api_login(request):
+def api_login_view(request):
     """
     API Login endpoint that returns JWT tokens
     """
@@ -156,3 +158,6 @@ def api_login(request):
             {'error': 'Invalid credentials'},
             status=status.HTTP_401_UNAUTHORIZED
         )
+
+# Wrap with csrf_exempt
+api_login = csrf_exempt(api_login_view)

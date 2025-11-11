@@ -117,6 +117,20 @@ class QueryViewSet(viewsets.ModelViewSet):
         """
         serializer.save(user=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to return full query data
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # Return full query data with id
+        instance = serializer.instance
+        output_serializer = QuerySerializer(instance)
+        headers = self.get_success_headers(output_serializer.data)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     @action(detail=True, methods=['get'])
     def logs(self, request, pk=None):
         """
