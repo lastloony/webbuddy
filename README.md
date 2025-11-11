@@ -31,23 +31,17 @@ cd webbuddy
 ### 2. Создание виртуального окружения
 
 ```bash
-python -m venv .venv
+python -m venv venv
 # Windows
-.venv\Scripts\activate
+venv\Scripts\activate
 # Linux/Mac
-source .venv/bin/activate
+source venv/bin/activate
 ```
 
 ### 3. Установка зависимостей
 
-Проект использует Poetry для управления зависимостями:
-
 ```bash
-# Установка Poetry (если еще не установлен)
-pip install poetry
-
-# Установка зависимостей
-poetry install
+pip install -r requirements.txt
 ```
 
 ### 4. Настройка переменных окружения
@@ -63,7 +57,6 @@ cp .env.example .env
 ### 5. Применение миграций
 
 ```bash
-python manage.py makemigrations
 python manage.py migrate
 ```
 
@@ -83,58 +76,51 @@ npm install
 cd ..
 ```
 
-### 8. Запуск в Development режиме
+### 8. Сборка и запуск
 
-**Вариант А: Два отдельных сервера (рекомендуется для разработки)**
-
-Терминал 1 - Backend:
-```bash
-python manage.py runserver
-# Django API: http://localhost:8000
-```
-
-Терминал 2 - Frontend:
-```bash
-cd frontend
-npm run dev
-# React app: http://localhost:5173
-```
-
-**Вариант Б: Django serving React build**
+**Соберите frontend:**
 
 ```bash
 cd frontend
 npm run build
 cd ..
-python manage.py runserver
-# Full app: http://localhost:8000
 ```
+
+**Запустите Django сервер:**
+
+```bash
+python manage.py runserver
+```
+
+Приложение будет доступно по адресу: http://localhost:8000
 
 ## Структура проекта
 
 ```
 webbuddy/
 ├── manage.py
-├── webbuddy/              # Главные настройки проекта
+├── requirements.txt       # Python зависимости
+├── webbuddy/             # Главные настройки проекта
 │   ├── settings.py
 │   ├── urls.py
 │   ├── views.py          # React app view
+│   ├── middleware.py     # CSRF middleware для API
 │   └── wsgi.py
-├── users/                 # Приложение пользователей
+├── users/                # Приложение пользователей
 │   ├── models.py         # Кастомная модель User
 │   ├── admin.py          # Админка с функцией сброса пароля
 │   ├── views.py          # API views
 │   └── serializers.py
-├── projects/              # Приложение проектов
+├── projects/             # Приложение проектов
 │   ├── models.py         # Модель Project
 │   ├── admin.py
 │   └── serializers.py
-├── queries/               # Приложение запросов и логов
+├── queries/              # Приложение запросов и логов
 │   ├── models.py         # Query, QueryLog, TokenUsageLog
 │   ├── views.py          # API viewsets
 │   ├── serializers.py
 │   └── urls.py           # API URLs
-└── frontend/              # React приложение
+└── frontend/             # React приложение
     ├── src/
     │   ├── components/   # UI компоненты
     │   ├── pages/        # Страницы
@@ -149,7 +135,7 @@ webbuddy/
 
 ### Для администратора
 
-1. Войдите в админ-панель: http://127.0.0.1:8000/admin/
+1. Войдите в админ-панель: http://localhost:8000/admin/
 2. Создайте проект (Project)
 3. Создайте пользователей и привяжите их к проекту
 4. При создании пользователя можно не указывать пароль - будет сгенерирован временный
@@ -157,24 +143,15 @@ webbuddy/
 
 ### Для пользователя
 
-1. Войдите на портал: http://127.0.0.1:8000/login/
+1. Войдите на портал: http://localhost:8000/
 2. При первом входе система предложит сменить временный пароль
-3. Создайте запрос: http://127.0.0.1:8000/queries/create/
-4. Просматривайте статус и логи: http://127.0.0.1:8000/queries/{id}/
-5. История запросов: http://127.0.0.1:8000/queries/
+3. Создавайте и отслеживайте запросы через веб-интерфейс
 
-### Работа с API
+## API Documentation
 
-#### Алгоритм работы с API
+### Аутентификация
 
-**Шаг 1: Создание пользователя**
-
-Администратор создаёт пользователя через админ-панель: http://127.0.0.1:8000/admin/users/user/add/
-
-- Укажите username, email, fio_name и выберите проект
-- Пароль можно не указывать - система сгенерирует временный автоматически
-
-**Шаг 2: Получение JWT токенов**
+**Получение JWT токенов:**
 
 ```bash
 curl -X POST http://localhost:8000/api/login/ \
@@ -205,23 +182,7 @@ curl -X POST http://localhost:8000/api/login/ \
 - `access` токен - **24 часа**
 - `refresh` токен - **7 дней**
 
-**Шаг 3: Использование Access токена в запросах**
-
-Все API запросы требуют заголовок авторизации:
-
-```bash
-curl -X GET http://localhost:8000/api/queries/ \
-  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
-```
-
-**Формат заголовка:**
-```
-Authorization: Bearer {ваш_access_token}
-```
-
-**Шаг 4: Обновление токена**
-
-Когда access токен истечёт (через 24 часа), используйте refresh токен:
+**Обновление токена:**
 
 ```bash
 curl -X POST http://localhost:8000/api/token/refresh/ \
@@ -231,29 +192,78 @@ curl -X POST http://localhost:8000/api/token/refresh/ \
   }'
 ```
 
-**Ответ:**
-```json
-{
-  "access": "новый_access_token"
-}
-```
+### API Endpoints
 
-**Шаг 5: Смена пароля (при первом входе)**
+**Аутентификация**
 
-Если в ответе `/api/login/` пришло `"first_login": true`, необходимо сменить пароль:
+| Endpoint | Метод | Авторизация | Описание |
+|----------|-------|-------------|----------|
+| `/api/login/` | POST | Нет | Получение JWT токенов |
+| `/api/token/refresh/` | POST | Нет | Обновление access токена |
+| `/api/users/me/` | GET | Да | Информация о текущем пользователе |
+| `/api/users/change_password/` | POST | Да | Смена пароля |
+
+**Запросы (Queries)**
 
 ```bash
-curl -X POST http://localhost:8000/api/users/change_password/ \
-  -H "Authorization: Bearer {access_token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "old_password": "временный_пароль",
-    "new_password": "новый_безопасный_пароль",
-    "confirm_password": "новый_безопасный_пароль"
-  }'
+# Список запросов
+GET /api/queries/
+Authorization: Bearer {token}
+
+# Создание запроса
+POST /api/queries/
+Authorization: Bearer {token}
+{
+  "project": 1,
+  "query_text": "Test description"
+}
+
+# Детали запроса
+GET /api/queries/{id}/
+Authorization: Bearer {token}
+
+# Логи запроса
+GET /api/queries/{id}/logs/
+Authorization: Bearer {token}
+
+# Фильтр по статусу
+GET /api/queries/by_status/?status=queued
+Authorization: Bearer {token}
 ```
 
-#### Пример класса для автоматического управления токенами (Python)
+**Логи**
+
+```bash
+# Создание лога (для внешнего сервиса)
+POST /api/logs/
+Authorization: Bearer {token}
+{
+  "project": 1,
+  "query": 1,
+  "log_data": "Log message"
+}
+
+# Список логов
+GET /api/logs/
+Authorization: Bearer {token}
+```
+
+**Статистика токенов**
+
+```bash
+# Создание записи использования токенов
+POST /api/token-usage/
+Authorization: Bearer {token}
+
+# Статистика
+GET /api/token-usage/statistics/
+GET /api/token-usage/statistics/?query_id=1
+Authorization: Bearer {token}
+```
+
+## Интеграция с внешним сервисом
+
+Пример Python клиента для работы с API:
 
 ```python
 import requests
@@ -279,7 +289,6 @@ class WebBuddyAPIClient:
         self.refresh_token = data["refresh"]
         self.token_expires_at = datetime.now() + timedelta(hours=24)
 
-        print(f"Успешный вход. First login: {data['first_login']}")
         return data
 
     def refresh_access_token(self):
@@ -294,7 +303,6 @@ class WebBuddyAPIClient:
         self.access_token = data["access"]
         self.token_expires_at = datetime.now() + timedelta(hours=24)
 
-        print("Токен успешно обновлён")
         return data
 
     def get_headers(self):
@@ -366,127 +374,6 @@ client.create_log(project_id=1, query_id=query["id"], log_data="Начинаем
 queued = client.get_queries(status="queued")
 ```
 
-#### API Endpoints
-
-**Аутентификация**
-
-| Endpoint | Метод | Авторизация | Описание |
-|----------|-------|-------------|----------|
-| `/api/login/` | POST | Нет | Получение JWT токенов |
-| `/api/token/refresh/` | POST | Нет | Обновление access токена |
-| `/api/users/me/` | GET | Да | Информация о текущем пользователе |
-| `/api/users/change_password/` | POST | Да | Смена пароля |
-
-#### Запросы (Queries)
-
-```bash
-# Список запросов
-GET /api/queries/
-
-# Создание запроса
-POST /api/queries/
-{
-  "project": 1,
-  "query_text": "Test description"
-}
-
-# Детали запроса
-GET /api/queries/{id}/
-
-# Логи запроса
-GET /api/queries/{id}/logs/
-
-# Фильтр по статусу
-GET /api/queries/by_status/?status=queued
-```
-
-#### Логи
-
-```bash
-# Создание лога (для внешнего сервиса)
-POST /api/logs/
-{
-  "project": 1,
-  "query": 1,
-  "log_data": "Log message"
-}
-
-# Список логов
-GET /api/logs/
-```
-
-#### Статистика токенов
-
-```bash
-# Создание записи использования токенов
-POST /api/token-usage/
-
-# Статистика
-GET /api/token-usage/statistics/
-GET /api/token-usage/statistics/?query_id=1
-```
-
-## Интеграция с внешним сервисом обработки
-
-Внешний сервис должен:
-
-1. Периодически опрашивать `/api/queries/by_status/?status=queued`
-2. Взять запрос и обновить статус на `in_progress`
-3. Записывать логи через `/api/logs/`
-4. После завершения:
-   - Обновить `answer_text`
-   - Изменить статус на `done` или `failed`
-   - Проставить `query_finished`
-
-Пример кода для внешнего сервиса:
-
-```python
-import requests
-
-API_URL = "http://localhost:8000/api"
-TOKEN = "your-jwt-token"
-HEADERS = {"Authorization": f"Bearer {TOKEN}"}
-
-# Получить очередные запросы
-response = requests.get(
-    f"{API_URL}/queries/by_status/?status=queued",
-    headers=HEADERS
-)
-queries = response.json()
-
-for query in queries:
-    # Обновить статус
-    requests.patch(
-        f"{API_URL}/queries/{query['id']}/",
-        json={"status": "in_progress"},
-        headers=HEADERS
-    )
-
-    # Создать лог
-    requests.post(
-        f"{API_URL}/logs/",
-        json={
-            "project": query['project'],
-            "query": query['id'],
-            "log_data": "Starting processing..."
-        },
-        headers=HEADERS
-    )
-
-    # ... обработка запроса ...
-
-    # Завершить
-    requests.patch(
-        f"{API_URL}/queries/{query['id']}/",
-        json={
-            "status": "done",
-            "answer_text": "Test completed successfully",
-            "query_finished": datetime.now().isoformat()
-        },
-        headers=HEADERS
-    )
-```
-
 ## Настройка для production
 
 1. Измените `DEBUG = False` в settings.py
@@ -504,12 +391,4 @@ for query in queries:
 - JWT токены с ограниченным сроком действия
 - Пользователи видят только данные своего проекта
 - Временные пароли при первом входе
-- CSRF защита для web форм
-
-## Лицензия
-
-MIT License
-
-## Автор
-
-Vladimir Lamkin (lastloony@gmail.com)
+- CSRF защита отключена только для API endpoints (`/api/*`)
