@@ -20,6 +20,7 @@ urlpatterns = [
 
     # API endpoints
     path('api/', include('queries.urls')),  # Queries API
+    path('api/', include('projects.urls')),  # Projects API
     path('api/', include(users.urls.api_urlpatterns)),    # Users API (includes login)
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 

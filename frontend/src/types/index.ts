@@ -49,3 +49,17 @@ export interface TokenUsage {
   total_tokens: number;
   created: string;
 }
+
+export interface Project {
+  id: number;
+  project_name: string;
+  test_it_token?: string;
+  test_it_token_masked?: string;
+  test_it_project_id: string;
+  jira_token?: string;
+  jira_token_masked?: string;
+  jira_project_id: string;
+  project_context: string;
+  created_at: string;
+  updated_at: string;
+}

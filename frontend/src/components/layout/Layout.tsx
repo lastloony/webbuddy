@@ -30,6 +30,9 @@ export function Layout({ children }: LayoutProps) {
               <Link to="/queries/create" className="nav-link">
                 Создать запрос
               </Link>
+              <Link to="/settings" className="nav-link">
+                Настройки
+              </Link>
               <span className="nav-user">
                 {user.fio_name || user.username}
               </span>

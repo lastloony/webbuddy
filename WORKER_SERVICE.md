@@ -394,7 +394,3 @@ curl -X POST http://localhost:8000/api/queries/ \
 curl -X POST http://localhost:8000/api/queries/claim_next/ \
   -H "Authorization: Bearer {token}"
 ```
-
-## Поддержка
-
-Вопросы по интеграции: lastloony@gmail.com

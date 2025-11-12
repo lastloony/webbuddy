@@ -130,3 +130,22 @@ export const logsApi = {
     return response.data;
   },
 };
+
+// Projects API
+export const projectsApi = {
+  getMyProject: async () => {
+    const response = await api.get('/projects/my_project/');
+    return response.data;
+  },
+
+  update: async (id: number, data: {
+    test_it_token?: string;
+    test_it_project_id?: string;
+    jira_token?: string;
+    jira_project_id?: string;
+    project_context?: string;
+  }) => {
+    const response = await api.patch(`/projects/${id}/`, data);
+    return response.data;
+  },
+};

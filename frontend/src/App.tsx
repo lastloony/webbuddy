@@ -6,6 +6,7 @@ import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
 import { QueryHistoryPage } from './pages/queries/QueryHistoryPage';
 import { QueryDetailPage } from './pages/queries/QueryDetailPage';
 import { CreateQueryPage } from './pages/queries/CreateQueryPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 
 function App() {
   return (
@@ -46,6 +47,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <QueryDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />
