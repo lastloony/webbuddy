@@ -138,6 +138,11 @@ export const projectsApi = {
     return response.data;
   },
 
+  getMyProjectWithTokens: async () => {
+    const response = await api.get('/projects/my_project_tokens/');
+    return response.data;
+  },
+
   update: async (id: number, data: {
     test_it_token?: string;
     test_it_project_id?: string;

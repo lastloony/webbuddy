@@ -134,6 +134,65 @@ Content-Type: application/json
 }
 ```
 
+### Получение настроек проекта
+
+**Для UI (с замаскированными токенами)**:
+```bash
+GET /api/projects/my_project/
+Authorization: Bearer {access_token}
+```
+
+**Response**:
+```json
+{
+  "id": 1,
+  "project_name": "My Project",
+  "test_it_token_masked": "**********abc123",
+  "test_it_project_id": "TEST-PROJECT-ID",
+  "jira_token_masked": "**********xyz789",
+  "jira_project_id": "JIRA-PROJECT-ID",
+  "project_context": "Description of the project...",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Для Worker Service (с полными токенами)**:
+
+Вариант 1 - Получить настройки текущего пользователя:
+```bash
+GET /api/projects/my_project_tokens/
+Authorization: Bearer {access_token}
+```
+
+Вариант 2 - Получить настройки по ID проекта (рекомендуется):
+```bash
+GET /api/projects/{project_id}/tokens/
+Authorization: Bearer {access_token}
+```
+
+**Response**:
+```json
+{
+  "id": 1,
+  "project_name": "My Project",
+  "test_it_token": "full_testit_token_here",
+  "test_it_project_id": "TEST-PROJECT-ID",
+  "jira_token": "full_jira_token_here",
+  "jira_project_id": "JIRA-PROJECT-ID",
+  "project_context": "Description of the project...",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Важно**:
+- Используйте вариант 2 (`/projects/{project_id}/tokens/`) для Worker Service
+- ID проекта берется из запроса через `claim_next()`
+- Endpoint возвращает полные токены - храните их в памяти, не логируйте!
+- Пользователь (Worker) должен быть привязан к проекту для доступа
+- Для обычного UI используйте `/my_project/` с замаскированными токенами
+
 ## Статусы запросов
 
 - `queued` - запрос создан, ждет обработки
@@ -223,6 +282,31 @@ class WebBuddyAPIClient:
                 "query": query_id,
                 "log_data": log_data
             },
+            headers=self.get_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_project_settings(self, project_id=None, with_tokens=False):
+        """
+        Получить настройки проекта
+
+        Args:
+            project_id: ID проекта (если None, берется проект текущего пользователя)
+            with_tokens: Если True, возвращает полные токены (для Worker Service)
+        """
+        if project_id and with_tokens:
+            # Получить конкретный проект с токенами (для Worker Service)
+            endpoint = f'/projects/{project_id}/tokens/'
+        elif with_tokens:
+            # Получить свой проект с токенами
+            endpoint = '/projects/my_project_tokens/'
+        else:
+            # Получить свой проект без токенов (для UI)
+            endpoint = '/projects/my_project/'
+
+        response = requests.get(
+            f"{self.base_url}{endpoint}",
             headers=self.get_headers()
         )
         response.raise_for_status()
@@ -378,9 +462,92 @@ NUM_WORKERS=5
 POLLING_INTERVAL=30
 ```
 
+## Использование настроек проекта
+
+При обработке запроса Worker Service может получить настройки проекта для интеграции с TestIt и Jira:
+
+```python
+async def process_query(client: WebBuddyAPIClient, query: dict):
+    """Обработать запрос с использованием настроек проекта"""
+    try:
+        # Получить ID проекта из запроса
+        project_id = query["project"]
+
+        # Получить настройки проекта с полными токенами по ID
+        project_settings = client.get_project_settings(
+            project_id=project_id,
+            with_tokens=True
+        )
+
+        client.create_log(
+            project_id,
+            query["id"],
+            f"Загружены настройки проекта: {project_settings['project_name']}"
+        )
+
+        # Получить полные токены и настройки из API
+        testit_token = project_settings.get('test_it_token')
+        testit_project_id = project_settings.get('test_it_project_id')
+        jira_token = project_settings.get('jira_token')
+        jira_project_id = project_settings.get('jira_project_id')
+        project_context = project_settings.get('project_context', '')
+
+        # Использовать токены для интеграции с TestIt
+        if testit_token and testit_project_id:
+            testit_client = TestItClient(token=testit_token, project_id=testit_project_id)
+            # Работа с TestIt API
+
+        # Использовать токены для интеграции с Jira
+        if jira_token and jira_project_id:
+            jira_client = JiraClient(token=jira_token, project_id=jira_project_id)
+            # Работа с Jira API
+
+        # Обработать запрос с использованием настроек
+        result = await ai_process_query(
+            query["query_text"],
+            project_context=project_context,
+            testit_client=testit_client if testit_token else None,
+            jira_client=jira_client if jira_token else None
+        )
+
+        # Завершить успешно
+        client.update_query(
+            query["id"],
+            status="done",
+            answer_text=result,
+            query_finished=datetime.now().isoformat()
+        )
+
+    except Exception as e:
+        client.create_log(query["project"], query["id"], f"Ошибка: {str(e)}")
+        client.update_query(
+            query["id"],
+            status="failed",
+            answer_text=f"Ошибка: {str(e)}",
+            query_finished=datetime.now().isoformat()
+        )
+```
+
+**Как это работает**:
+1. Worker Service получает запрос через `claim_next()`
+2. Из запроса извлекается `project_id` (поле `"project"`)
+3. Worker запрашивает настройки проекта: `get_project_settings(project_id=1, with_tokens=True)`
+4. API проверяет, что Worker пользователь привязан к этому проекту
+5. Worker получает полные токены TestIt и Jira для работы с внешними API
+
+**Важно**:
+- ID проекта берется из запроса, а не из настроек пользователя Worker
+- Worker должен быть привязан к проекту для доступа к токенам
+- Токены передаются через JWT, требуется аутентификация
+- Не логируйте токены в открытом виде!
+
 ## Тестирование
 
 ```bash
+# Получить настройки проекта
+curl -X GET http://localhost:8000/api/projects/my_project/ \
+  -H "Authorization: Bearer {token}"
+
 # Создать тестовый запрос через API
 curl -X POST http://localhost:8000/api/queries/ \
   -H "Authorization: Bearer {token}" \
