@@ -59,6 +59,30 @@ class QueryViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(output_serializer.data)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        Удаление запроса (только если это запрос пользователя из его проекта)
+        Можно удалять только запросы в статусах 'done' или 'failed'
+        """
+        instance = self.get_object()
+
+        # Проверка прав: пользователь должен быть из того же проекта
+        if not request.user.is_superuser and instance.project_id != request.user.project_id:
+            return Response(
+                {"detail": "У вас нет прав для удаления этого запроса"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Проверка статуса: можно удалять только завершенные или ошибочные запросы
+        if instance.status not in ['done', 'failed']:
+            return Response(
+                {"detail": f"Нельзя удалить запрос в статусе '{instance.status}'. Можно удалять только запросы в статусах 'done' или 'failed'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=['get'])
     def logs(self, request, pk=None):
         """

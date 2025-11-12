@@ -108,6 +108,11 @@ export const queriesApi = {
     return response.data;
   },
 
+  delete: async (id: number) => {
+    const response = await api.delete(`/queries/${id}/`);
+    return response.data;
+  },
+
   getLogs: async (id: number) => {
     const response = await api.get(`/queries/${id}/logs/`);
     return response.data.results || response.data; // Support paginated response

@@ -11,6 +11,7 @@ export function QueryDetailPage() {
   const [logs, setLogs] = useState<QueryLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
 
@@ -80,6 +81,29 @@ export function QueryDetailPage() {
     return new Date(dateString).toLocaleString('ru-RU');
   };
 
+  const handleDelete = async () => {
+    if (!query || !id) return;
+
+    if (!confirm('Вы уверены, что хотите удалить этот запрос?')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const queryId = parseInt(id, 10);
+      await queriesApi.delete(queryId);
+      navigate('/');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || 'Ошибка при удалении запроса';
+      alert(errorMsg);
+      setIsDeleting(false);
+    }
+  };
+
+  const canDelete = (status: string) => {
+    return status === 'done' || status === 'failed';
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -110,9 +134,20 @@ export function QueryDetailPage() {
         <div className="query-detail-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h1>Запрос #{query.id}</h1>
-            <button className="btn btn-secondary" onClick={() => navigate('/')}>
-              Вернуться
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {canDelete(query.status) && (
+                <button
+                  className="btn btn-danger"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Удаление...' : 'Удалить'}
+                </button>
+              )}
+              <button className="btn btn-secondary" onClick={() => navigate('/')}>
+                Вернуться
+              </button>
+            </div>
           </div>
 
           {error && <div className="alert alert-error">{error}</div>}
