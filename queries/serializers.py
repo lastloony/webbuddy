@@ -25,9 +25,9 @@ class QuerySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'project', 'project_name', 'user', 'user_name',
             'query_text', 'answer_text', 'status',
-            'query_created', 'query_finished', 'logs_count'
+            'query_created', 'query_started', 'query_finished', 'logs_count'
         ]
-        read_only_fields = ['id', 'query_created', 'query_finished', 'user']
+        read_only_fields = ['id', 'query_created', 'query_started', 'query_finished', 'user']
 
     def get_logs_count(self, obj):
         return obj.logs.count()

@@ -15,12 +15,15 @@ def notify_fastapi_async(query_id):
         query_id: ID созданного запроса
     """
     try:
+        payload = {
+            "query_id": query_id,
+            "webbuddy_url": settings.WEBBUDDY_URL
+        }
+        logger.info(f"Sending notification to FastAPI: {payload}")
+
         response = requests.post(
             f"{settings.FASTAPI_URL}/api/process-query",
-            json={
-                "query_id": query_id,
-                "webbuddy_url": settings.WEBBUDDY_URL
-            },
+            json=payload,
             timeout=2  # Короткий таймаут - не ждем долго
         )
 
@@ -29,6 +32,7 @@ def notify_fastapi_async(query_id):
         else:
             logger.warning(
                 f"FastAPI returned {response.status_code} for query {query_id}. "
+                f"Response: {response.text}. "
                 f"Query will be picked up by polling."
             )
 

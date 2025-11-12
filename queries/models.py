@@ -34,6 +34,7 @@ class Query(models.Model):
         verbose_name='Status'
     )
     query_created = models.DateTimeField(auto_now_add=True, verbose_name='Created At')
+    query_started = models.DateTimeField(null=True, blank=True, verbose_name='Started At')
     query_finished = models.DateTimeField(null=True, blank=True, verbose_name='Finished At')
 
     class Meta:
