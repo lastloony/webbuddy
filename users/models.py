@@ -4,7 +4,7 @@ from django.db import models
 
 class User(AbstractUser):
     """
-    Custom User model with additional fields
+    Пользовательская модель User с дополнительными полями
     """
     fio_name = models.CharField(max_length=150, blank=True, verbose_name='FIO')
     email = models.EmailField(max_length=50, unique=True, verbose_name='Email')

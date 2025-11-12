@@ -1,86 +1,12 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate
 from .models import User
 from .serializers import UserSerializer, PasswordChangeSerializer
-
-
-# ============ Веб-представления ============
-
-@require_http_methods(["GET", "POST"])
-def login_view(request):
-    """
-    Представление входа с проверкой первого входа
-    """
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            login(request, user)
-
-            # Проверка, является ли это первым входом
-            if user.first_login:
-                messages.warning(request, 'You must change your temporary password.')
-                return redirect('change_password')
-
-            return redirect('query_create')
-        else:
-            messages.error(request, 'Invalid username or password.')
-
-    return render(request, 'users/login.html')
-
-
-@login_required
-@require_http_methods(["GET", "POST"])
-def change_password_view(request):
-    """
-    Представление для смены пароля при первом входе
-    """
-    if request.method == 'POST':
-        old_password = request.POST.get('old_password')
-        new_password = request.POST.get('new_password')
-        confirm_password = request.POST.get('confirm_password')
-
-        if new_password != confirm_password:
-            messages.error(request, 'New passwords do not match.')
-            return render(request, 'users/change_password.html')
-
-        if not request.user.check_password(old_password):
-            messages.error(request, 'Current password is incorrect.')
-            return render(request, 'users/change_password.html')
-
-        if len(new_password) < 8:
-            messages.error(request, 'Password must be at least 8 characters long.')
-            return render(request, 'users/change_password.html')
-
-        request.user.set_password(new_password)
-        request.user.first_login = False
-        request.user.save()
-
-        messages.success(request, 'Password changed successfully.')
-        return redirect('login')
-
-    return render(request, 'users/change_password.html')
-
-
-def logout_view(request):
-    """
-    Представление выхода из системы
-    """
-    logout(request)
-    messages.success(request, 'You have been logged out.')
-    return redirect('login')
 
 
 # ============ API-представления ============

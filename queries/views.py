@@ -1,7 +1,3 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.http import JsonResponse
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import viewsets, status
@@ -14,76 +10,6 @@ from .serializers import (
     QuerySerializer, QueryCreateSerializer, QueryDetailSerializer,
     QueryLogSerializer, TokenUsageLogSerializer, TokenUsageStatsSerializer
 )
-
-
-# ============ Веб-представления ============
-
-@login_required
-def query_create_view(request):
-    """
-    Представление для создания нового запроса
-    """
-    if request.method == 'POST':
-        query_text = request.POST.get('query_text')
-
-        if not query_text:
-            messages.error(request, 'Query text is required.')
-            return render(request, 'queries/create.html')
-
-        query = Query.objects.create(
-            project=request.user.project,
-            user=request.user,
-            query_text=query_text,
-            status='queued'
-        )
-
-        messages.success(request, f'Query #{query.id} created successfully.')
-        return redirect('query_detail', pk=query.id)
-
-    return render(request, 'queries/create.html')
-
-
-@login_required
-def query_detail_view(request, pk):
-    """
-    Представление для отображения деталей запроса с логами
-    """
-    query = get_object_or_404(
-        Query.objects.filter(project=request.user.project),
-        pk=pk
-    )
-
-    return render(request, 'queries/detail.html', {'query': query})
-
-
-@login_required
-def query_list_view(request):
-    """
-    Представление для отображения истории запросов
-    """
-    queries = Query.objects.filter(project=request.user.project).order_by('-query_created')
-
-    return render(request, 'queries/history.html', {'queries': queries})
-
-
-@login_required
-def query_logs_ajax(request, pk):
-    """
-    AJAX-эндпоинт для получения логов запроса
-    """
-    query = get_object_or_404(
-        Query.objects.filter(project=request.user.project),
-        pk=pk
-    )
-
-    logs = query.logs.all().values('id', 'log_data', 'create_dtime')
-
-    return JsonResponse({
-        'status': query.status,
-        'answer_text': query.answer_text,
-        'query_finished': query.query_finished.isoformat() if query.query_finished else None,
-        'logs': list(logs)
-    })
 
 
 # ============ API-представления ============

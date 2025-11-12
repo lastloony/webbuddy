@@ -3,10 +3,7 @@ URL configuration for webbuddy project.
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.views.generic import RedirectView
 from django.conf import settings
-from django.conf.urls.static import static
-from django.views.static import serve
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import ReactAppView
 import users.urls
@@ -15,13 +12,10 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
-    # Web URLs (users web views)
-    path('', include(users.urls.web_urlpatterns)),
-
     # API endpoints
     path('api/', include('queries.urls')),  # Queries API
     path('api/', include('projects.urls')),  # Projects API
-    path('api/', include(users.urls.api_urlpatterns)),    # Users API (includes login)
+    path('api/', include(users.urls.api_urlpatterns)),  # Users API (includes login)
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # React app - catch all routes (must be last)
@@ -30,7 +24,6 @@ urlpatterns = [
 
 # Serve static files in development
 if settings.DEBUG:
-    # Serve files from frontend/dist (including assets folder)
     from django.views.static import serve
     urlpatterns = [
         # Serve assets from frontend/dist
