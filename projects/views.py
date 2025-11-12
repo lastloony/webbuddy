@@ -7,14 +7,14 @@ from .serializers import ProjectSerializer
 
 class ProjectViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Project model with user's project access control
+    ViewSet для модели Project с контролем доступа к проекту пользователя
     """
     serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         """
-        Users can only see their own project
+        Пользователи могут видеть только свой проект
         """
         user = self.request.user
         return Project.objects.filter(id=user.project_id)
@@ -22,7 +22,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_project(self, request):
         """
-        Get current user's project
+        Получение проекта текущего пользователя
         """
         user = request.user
         if not user.project_id:
@@ -38,8 +38,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_project_tokens(self, request):
         """
-        Get current user's project with FULL tokens (for Worker Service)
-        WARNING: Returns sensitive data!
+        Получение проекта текущего пользователя с ПОЛНЫМИ токенами (для Worker Service)
+        ВНИМАНИЕ: Возвращает конфиденциальные данные!
         """
         user = request.user
         if not user.project_id:
@@ -50,7 +50,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         project = Project.objects.get(id=user.project_id)
 
-        # Return full data including tokens
+        # Возврат полных данных, включая токены
         return Response({
             "id": project.id,
             "project_name": project.project_name,
@@ -66,9 +66,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='tokens')
     def get_project_tokens(self, request, pk=None):
         """
-        Get specific project with FULL tokens by project ID (for Worker Service)
-        WARNING: Returns sensitive data!
-        User must be assigned to this project.
+        Получение конкретного проекта с ПОЛНЫМИ токенами по ID проекта (для Worker Service)
+        ВНИМАНИЕ: Возвращает конфиденциальные данные!
+        Пользователь должен быть назначен на этот проект.
         """
         try:
             project = Project.objects.get(id=pk)
@@ -78,14 +78,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Check if user belongs to this project
+        # Проверка принадлежности пользователя к этому проекту
         if request.user.project_id != project.id:
             return Response(
                 {"detail": "You don't have permission to access this project"},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Return full data including tokens
+        # Возврат полных данных, включая токены
         return Response({
             "id": project.id,
             "project_name": project.project_name,
@@ -100,7 +100,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         """
-        Update project (only if it's user's project)
+        Обновление проекта (только если это проект пользователя)
         """
         instance = self.get_object()
         if instance.id != request.user.project_id:
@@ -112,7 +112,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         """
-        Partial update project (only if it's user's project)
+        Частичное обновление проекта (только если это проект пользователя)
         """
         instance = self.get_object()
         if instance.id != request.user.project_id:

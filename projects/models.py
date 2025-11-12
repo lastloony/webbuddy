@@ -3,7 +3,7 @@ from django.db import models
 
 class Project(models.Model):
     """
-    Model for storing project (AS) parameters
+    Модель для хранения параметров проекта (АС)
     """
     project_name = models.CharField(max_length=128, verbose_name='Project Name')
     test_it_token = models.CharField(max_length=128, blank=True, verbose_name='TestIt Token')

@@ -4,7 +4,7 @@ from django.conf import settings
 
 class Query(models.Model):
     """
-    Model for user queries/requests
+    Модель для запросов/заявок пользователей
     """
     STATUS_CHOICES = [
         ('queued', 'Queued'),
@@ -48,7 +48,7 @@ class Query(models.Model):
 
 class QueryLog(models.Model):
     """
-    Model for query execution logs
+    Модель для логов выполнения запросов
     """
     project = models.ForeignKey(
         'projects.Project',
@@ -77,7 +77,7 @@ class QueryLog(models.Model):
 
 class TokenUsageLog(models.Model):
     """
-    Model for tracking AI agent token usage and statistics
+    Модель для отслеживания использования токенов AI-агентами и статистики
     """
     ai_agent_name = models.CharField(max_length=50, verbose_name='AI Agent Name')
     project = models.ForeignKey(

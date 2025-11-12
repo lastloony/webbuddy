@@ -13,12 +13,12 @@ from .models import User
 from .serializers import UserSerializer, PasswordChangeSerializer
 
 
-# ============ Web Views ============
+# ============ Веб-представления ============
 
 @require_http_methods(["GET", "POST"])
 def login_view(request):
     """
-    Login view with first login check
+    Представление входа с проверкой первого входа
     """
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -29,7 +29,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
 
-            # Check if first login
+            # Проверка, является ли это первым входом
             if user.first_login:
                 messages.warning(request, 'You must change your temporary password.')
                 return redirect('change_password')
@@ -45,7 +45,7 @@ def login_view(request):
 @require_http_methods(["GET", "POST"])
 def change_password_view(request):
     """
-    View for changing password on first login
+    Представление для смены пароля при первом входе
     """
     if request.method == 'POST':
         old_password = request.POST.get('old_password')
@@ -76,18 +76,18 @@ def change_password_view(request):
 
 def logout_view(request):
     """
-    Logout view
+    Представление выхода из системы
     """
     logout(request)
     messages.success(request, 'You have been logged out.')
     return redirect('login')
 
 
-# ============ API Views ============
+# ============ API-представления ============
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    ViewSet for User model (read-only for regular users)
+    ViewSet для модели User (только чтение для обычных пользователей)
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -102,7 +102,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def me(self, request):
         """
-        Get current user info
+        Получение информации о текущем пользователе
         """
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
@@ -110,7 +110,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['post'])
     def change_password(self, request):
         """
-        Change password endpoint
+        Эндпоинт для смены пароля
         """
         serializer = PasswordChangeSerializer(data=request.data)
 
@@ -133,11 +133,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @api_view(['POST'])
-@authentication_classes([])  # Disable authentication for this view
+@authentication_classes([])  # Отключение аутентификации для этого представления
 @permission_classes([AllowAny])
 def api_login_view(request):
     """
-    API Login endpoint that returns JWT tokens
+    API-эндпоинт входа, который возвращает JWT-токены
     """
     username = request.data.get('username')
     password = request.data.get('password')
@@ -159,5 +159,5 @@ def api_login_view(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-# Wrap with csrf_exempt
+# Обертка с csrf_exempt
 api_login = csrf_exempt(api_login_view)

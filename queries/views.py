@@ -16,12 +16,12 @@ from .serializers import (
 )
 
 
-# ============ Web Views ============
+# ============ Веб-представления ============
 
 @login_required
 def query_create_view(request):
     """
-    View for creating a new query
+    Представление для создания нового запроса
     """
     if request.method == 'POST':
         query_text = request.POST.get('query_text')
@@ -46,7 +46,7 @@ def query_create_view(request):
 @login_required
 def query_detail_view(request, pk):
     """
-    View for displaying query details with logs
+    Представление для отображения деталей запроса с логами
     """
     query = get_object_or_404(
         Query.objects.filter(project=request.user.project),
@@ -59,7 +59,7 @@ def query_detail_view(request, pk):
 @login_required
 def query_list_view(request):
     """
-    View for displaying query history
+    Представление для отображения истории запросов
     """
     queries = Query.objects.filter(project=request.user.project).order_by('-query_created')
 
@@ -69,7 +69,7 @@ def query_list_view(request):
 @login_required
 def query_logs_ajax(request, pk):
     """
-    AJAX endpoint for getting query logs
+    AJAX-эндпоинт для получения логов запроса
     """
     query = get_object_or_404(
         Query.objects.filter(project=request.user.project),
@@ -86,13 +86,13 @@ def query_logs_ajax(request, pk):
     })
 
 
-# ============ API Views ============
+# ============ API-представления ============
 
 
 class QueryViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Query model
-    Provides CRUD operations and additional actions for queries
+    ViewSet для модели Query
+    Предоставляет CRUD-операции и дополнительные действия для запросов
     """
     queryset = Query.objects.all()
     permission_classes = [IsAuthenticated]
@@ -106,7 +106,7 @@ class QueryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Filter queries by user's project
+        Фильтрация запросов по проекту пользователя
         """
         user = self.request.user
         if user.is_superuser:
@@ -115,19 +115,19 @@ class QueryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Create query with current user
+        Создание запроса с текущим пользователем
         """
         serializer.save(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
         """
-        Override create to return full query data
+        Переопределение create для возврата полных данных запроса
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        # Return full query data with id
+        # Возврат полных данных запроса с id
         instance = serializer.instance
         output_serializer = QuerySerializer(instance)
         headers = self.get_success_headers(output_serializer.data)
@@ -136,7 +136,7 @@ class QueryViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def logs(self, request, pk=None):
         """
-        Get logs for a specific query with pagination
+        Получение логов для конкретного запроса с пагинацией
         """
         query = self.get_object()
         logs = query.logs.all()
@@ -152,7 +152,7 @@ class QueryViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def by_status(self, request):
         """
-        Get queries filtered by status
+        Получение запросов, отфильтрованных по статусу
         """
         status_filter = request.query_params.get('status', None)
         queryset = self.get_queryset()
@@ -171,11 +171,11 @@ class QueryViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def claim_next(self, request):
         """
-        Atomically claim the next queued query for processing
-        Returns the claimed query or 404 if queue is empty
+        Атомарное получение следующего запроса из очереди для обработки
+        Возвращает полученный запрос или 404, если очередь пуста
         """
         with transaction.atomic():
-            # Get the first queued query with row-level lock
+            # Получение первого запроса в очереди с блокировкой на уровне строки
             query = self.get_queryset().select_for_update(skip_locked=True).filter(
                 status='queued'
             ).order_by('query_created').first()
@@ -186,20 +186,20 @@ class QueryViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # Update status to in_progress
+            # Обновление статуса на in_progress
             query.status = 'in_progress'
             query.query_started = timezone.now()
             query.save()
 
-            # Return full query data
+            # Возврат полных данных запроса
             serializer = QuerySerializer(query)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class QueryLogViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for QueryLog model
-    Allows external service to create logs
+    ViewSet для модели QueryLog
+    Позволяет внешнему сервису создавать логи
     """
     queryset = QueryLog.objects.all()
     serializer_class = QueryLogSerializer
@@ -207,7 +207,7 @@ class QueryLogViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Filter logs by user's project
+        Фильтрация логов по проекту пользователя
         """
         user = self.request.user
         if user.is_superuser:
@@ -217,7 +217,7 @@ class QueryLogViewSet(viewsets.ModelViewSet):
 
 class TokenUsageLogViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for TokenUsageLog model
+    ViewSet для модели TokenUsageLog
     """
     queryset = TokenUsageLog.objects.all()
     serializer_class = TokenUsageLogSerializer
@@ -225,7 +225,7 @@ class TokenUsageLogViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Filter token logs by user's project
+        Фильтрация логов использования токенов по проекту пользователя
         """
         user = self.request.user
         if user.is_superuser:
@@ -235,28 +235,28 @@ class TokenUsageLogViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def statistics(self, request):
         """
-        Get token usage statistics
+        Получение статистики использования токенов
         """
         queryset = self.get_queryset()
 
-        # Filter by query_id if provided
+        # Фильтрация по query_id, если указан
         query_id = request.query_params.get('query_id', None)
         if query_id:
             queryset = queryset.filter(query_id=query_id)
 
-        # Calculate statistics
+        # Расчет статистики
         stats = queryset.aggregate(
             total_tokens=Sum('total_tokens'),
             total_requests=Count('id')
         )
 
-        # Group by agent
+        # Группировка по агенту
         by_agent = queryset.values('ai_agent_name').annotate(
             total=Sum('total_tokens'),
             count=Count('id')
         )
 
-        # Group by model
+        # Группировка по модели
         by_model = queryset.values('model_name').annotate(
             total=Sum('total_tokens'),
             count=Count('id')
