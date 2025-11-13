@@ -15,8 +15,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Пользователи могут видеть только свой проект
+        Сервисные аккаунты и администраторы видят все проекты
         """
         user = self.request.user
+        if user.has_cross_project_access():
+            return Project.objects.all()
         return Project.objects.filter(id=user.project_id)
 
     @action(detail=False, methods=['get'])
@@ -78,8 +81,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверка принадлежности пользователя к этому проекту
-        if request.user.project_id != project.id:
+        # Проверка принадлежности пользователя к этому проекту (или наличия cross-project доступа)
+        if not request.user.has_cross_project_access() and request.user.project_id != project.id:
             return Response(
                 {"detail": "You don't have permission to access this project"},
                 status=status.HTTP_403_FORBIDDEN
@@ -100,10 +103,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         """
-        Обновление проекта (только если это проект пользователя)
+        Обновление проекта (только если это проект пользователя или есть cross-project доступ)
         """
         instance = self.get_object()
-        if instance.id != request.user.project_id:
+        if not request.user.has_cross_project_access() and instance.id != request.user.project_id:
             return Response(
                 {"detail": "You don't have permission to edit this project"},
                 status=status.HTTP_403_FORBIDDEN
@@ -112,10 +115,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         """
-        Частичное обновление проекта (только если это проект пользователя)
+        Частичное обновление проекта (только если это проект пользователя или есть cross-project доступ)
         """
         instance = self.get_object()
-        if instance.id != request.user.project_id:
+        if not request.user.has_cross_project_access() and instance.id != request.user.project_id:
             return Response(
                 {"detail": "You don't have permission to edit this project"},
                 status=status.HTTP_403_FORBIDDEN

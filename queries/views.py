@@ -33,9 +33,10 @@ class QueryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Фильтрация запросов по проекту пользователя
+        Сервисные аккаунты и администраторы видят все запросы
         """
         user = self.request.user
-        if user.is_superuser:
+        if user.has_cross_project_access():
             return Query.objects.all()
         return Query.objects.filter(project=user.project)
 
@@ -66,8 +67,8 @@ class QueryViewSet(viewsets.ModelViewSet):
         """
         instance = self.get_object()
 
-        # Проверка прав: пользователь должен быть из того же проекта
-        if not request.user.is_superuser and instance.project_id != request.user.project_id:
+        # Проверка прав: пользователь должен быть из того же проекта (или иметь cross-project доступ)
+        if not request.user.has_cross_project_access() and instance.project_id != request.user.project_id:
             return Response(
                 {"detail": "У вас нет прав для удаления этого запроса"},
                 status=status.HTTP_403_FORBIDDEN
@@ -158,9 +159,10 @@ class QueryLogViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Фильтрация логов по проекту пользователя
+        Сервисные аккаунты и администраторы видят все логи
         """
         user = self.request.user
-        if user.is_superuser:
+        if user.has_cross_project_access():
             return QueryLog.objects.all()
         return QueryLog.objects.filter(project=user.project)
 
@@ -176,9 +178,10 @@ class TokenUsageLogViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Фильтрация логов использования токенов по проекту пользователя
+        Сервисные аккаунты и администраторы видят все логи
         """
         user = self.request.user
-        if user.is_superuser:
+        if user.has_cross_project_access():
             return TokenUsageLog.objects.all()
         return TokenUsageLog.objects.filter(project=user.project)
 
