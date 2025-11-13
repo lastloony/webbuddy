@@ -84,6 +84,63 @@ print(f"Cross-project доступ: {service_user.has_cross_project_access()}")
    - Задайте пароль
 3. Нажмите "Save"
 
+## Сброс пароля сервисного аккаунта
+
+Если вы потеряли пароль сервисного аккаунта, его можно сбросить несколькими способами:
+
+### Способ 1: Management Command (самый простой)
+
+```bash
+# Автоматическая генерация нового пароля
+python manage.py reset_service_password --username service_api
+
+# Установка своего пароля
+python manage.py reset_service_password --username service_api --password "NewSecurePassword123"
+```
+
+**Пример вывода:**
+```
+============================================================
+Пароль успешно сброшен!
+============================================================
+Username: service_api
+Email: service@example.com
+Role: service
+
+Новый пароль (сохраните его!): xK9mP2nQ5rT8wV1zY4cB
+
+============================================================
+```
+
+### Способ 2: Django Shell
+
+```python
+python manage.py shell
+
+from users.models import User
+
+# Находим пользователя
+user = User.objects.get(username='service_api')
+
+# Устанавливаем новый пароль
+new_password = 'YourNewSecurePassword123'
+user.set_password(new_password)
+user.save()
+
+print(f"Пароль для {user.username} успешно изменен")
+print(f"Новый пароль: {new_password}")
+```
+
+### Способ 3: Django Admin
+
+1. Откройте `/admin/users/user/`
+2. Найдите и нажмите на пользователя `service_api`
+3. Нажмите на ссылку "this form" рядом с "Password"
+4. Введите новый пароль дважды
+5. Нажмите "Save"
+
+**Важно:** Сохраните новый пароль в безопасном месте сразу после сброса!
+
 ## Использование сервисного аккаунта
 
 ### Базовый пример
@@ -631,14 +688,15 @@ print(f"Синхронизировано {len(queries)} запросов")
 
 ```
 users/
-├── models.py                      # UserRole, User с методами is_service_account()
-├── permissions.py                 # Custom permission классы
-├── admin.py                       # Django Admin конфигурация
+├── models.py                          # UserRole, User с методами is_service_account()
+├── permissions.py                     # Custom permission классы
+├── admin.py                           # Django Admin конфигурация
 ├── management/
 │   └── commands/
-│       └── create_service_account.py  # Management command
+│       ├── create_service_account.py  # Создание сервисного аккаунта
+│       └── reset_service_password.py  # Сброс пароля сервисного аккаунта
 └── migrations/
-    └── 0002_user_role.py         # Миграция добавления поля role
+    └── 0002_user_role.py             # Миграция добавления поля role
 ```
 
 ### API Endpoints с cross-project доступом
