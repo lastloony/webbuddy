@@ -611,7 +611,7 @@ queries = webbuddy.get_all_queries()
 # Отправляем в систему аналитики
 for query in queries:
     requests.post(
-        'http://analytics-system.com/api/queries',
+        'http://127.0.0.1:8000/api/queries',
         json=query,
         headers={'Authorization': f'Bearer {ANALYTICS_TOKEN}'}
     )
@@ -622,7 +622,6 @@ print(f"Синхронизировано {len(queries)} запросов")
 ## См. также
 
 - [WORKER_SERVICE.md](./WORKER_SERVICE.md) - Документация по работе с Worker Service
-- [API Documentation](#) - Полная документация API
 - Django Admin: `/admin/users/user/`
 - Исходный код: `users/models.py`, `users/permissions.py`
 
