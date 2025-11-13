@@ -39,19 +39,19 @@ class UserAdmin(BaseUserAdmin):
     Custom User Admin with password reset functionality
     """
     add_form = CustomUserCreationForm
-    list_display = ('username', 'fio_name', 'email', 'project', 'first_login', 'is_active', 'is_staff')
-    list_filter = ('project', 'first_login', 'is_active', 'is_staff')
+    list_display = ('username', 'fio_name', 'email', 'role', 'project', 'first_login', 'is_active', 'is_staff')
+    list_filter = ('role', 'project', 'first_login', 'is_active', 'is_staff')
     search_fields = ('username', 'fio_name', 'email')
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Personal Info', {'fields': ('fio_name', 'email', 'project')}),
+        ('Personal Info', {'fields': ('fio_name', 'email', 'project', 'role')}),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Important Dates', {'fields': ('last_login', 'date_joined', 'first_login')}),
     )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'fio_name', 'email', 'project', 'password1', 'password2'),
+            'fields': ('username', 'fio_name', 'email', 'project', 'role', 'password1', 'password2'),
         }),
     )
 
